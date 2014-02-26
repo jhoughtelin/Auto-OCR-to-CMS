@@ -1,12 +1,12 @@
-= MailHandler
+# MailHandler
 This is the process & processor responsible for turning PDF scanned images of USPS incomming mail in to
 searchable resources attached to customer profiles within the CRM.  Amungst other things.
 
-== Dependencies
-* Cuniform
-* ImageMagick
-* GhostScript
-* Linux
+## Dependencies
+ - Cuniform
+ - ImageMagick
+ - GhostScript
+ - Linux
 
 # OCR PROCESS
 
