@@ -1,5 +1,4 @@
 <?php
-BRANCH 1 MODIFICATIONS HERE
 /* vim: set expandtab tabstop=4 shiftwidth=4 softtabstop=4: */
 
 /**
