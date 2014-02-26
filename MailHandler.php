@@ -16,6 +16,14 @@
  */
 
 /**
+ * @TODO    Verify during initial class construct stage that all necessary files & folders are writeable.
+ *          - Log File
+ *          - Storage Folder
+ *          - Incomming Folder
+ *          - Process Queue File
+ */
+
+/**
  * Standard Namespace
  */
 //namespace MailHandler;
@@ -39,14 +47,27 @@ class MailHandler
     /**
      * @var $this->logFile  Log File Full Path+Filename;
      */
-    var $logFile;
+    var $logFile = "MailHandler.log";
 
     /**
      * @var $this->logfileResource  Log File Reference Handler
      */
     var $logfileResource;
 
+    /**
+     * @var $this->processQueueFile     Queue list of mail pieces ready to be processed through OCR
+     */
+    var $processQueueFile =  "ProcessQueue";
 
+    /**
+     * @var $this->logLevel sets the level of detail output log.
+     *
+     * 0 = LOGGING DISABLED
+     * 1 = Minimum Detail
+     * 2 = ?
+     * 3 = Maximum Detail
+     */
+    var $logLevel = 1;
 
     ///////////////////////////////////
     //// CONSTRUCTS
@@ -146,6 +167,25 @@ class MailHandler
         return $this->logFile;
     }
 
+    /**
+     * Log Level Setter
+     *
+     * @param  $logLevel
+     *
+     * @return true cuz I <3 u
+     */
+    public function setLogLevel($logLevel)
+    {
+        if(is_integer($logLevel) && ($logLevel >= 0) && ($logLevel <= 3)){
+            $this->logLevel = $logLevel;
+        } else {
+            // Value passed to set log level was not understood.
+            $this->addLogEntry('Failed to change Log Detail Level.  Value "'.$logLevel.'" was is not an acceptable value.',1);
+            return false;
+        }
+
+    }
+
 
 
     ///////////////////////////////////
@@ -153,18 +193,24 @@ class MailHandler
     ///////////////////////////////////
 
     /**
-     * Write Log Entry Data to File
+     * Add Log Entry
      *
-     * @param string $entry Log Entry Text
+     * @param string $entry    Log Entry Text
+     * @param int    $severity Log Entry Severity Level (Lower Number = Higher Severity)
      *
      * @return bool Returns true every time becuase I love you. <3 -- and there's nothin u can do about it.
      *      Go ahead.. Delete the return line.  Nevermore elinore...  Nevermore... ^_^
      */
-    private function addLogEntry($entry){
-        $timestamp = date('Y-m-d H:i:s');
-        fwrite($this->logfileResource,$timestamp." ".$entry);
-
-        return true;
+    private function addLogEntry($entry,$severity=1){
+        $timestamp = date('Ymd-His');
+        if($severity <= $this->logLevel){
+            // Entry written to log file
+            fwrite($this->logfileResource,$timestamp." ".$entry."\r\n");
+            return true;
+        } else {
+            // Entry not written to log file
+            return false;
+        }
     }
 
     /**
@@ -184,9 +230,9 @@ class MailHandler
                     $this->storeNewMailpiece($entry);
                 } else {
                     // Mail Piece has been stored & processed - burn the original
-                    unlink($this->storageFolder.DIRECTORY_SEPARATOR.$entry);
+                    //unlink($this->storageFolder.DIRECTORY_SEPARATOR.$entry);
                     // LOG our psychobabble
-                    $this->addLogEntry($entry.' was found in permanent storage.  Removing file from incoming mail folder');
+                    //$this->addLogEntry($entry.' was found in permanent storage.  Removing file from incoming mail folder');
                 }
             }
         }
@@ -222,9 +268,65 @@ class MailHandler
      */
     public function storeNewMailpiece($filename) {
         $md5 = md5_file($this->incomingFolder.DIRECTORY_SEPARATOR.$filename);
-        
+        if($this->checkMailExists($md5)){
+            // If the Mailpiece already exists in storage - exit process
+            return false;
+        }else{
+            // Mailpiece does not exist in storage - Create container
+            if(mkdir($this->storageFolder.DIRECTORY_SEPARATOR.$md5)){
+                // Directory Created
+                $this->addLogEntry('New Mailpiece storage container created: '.$this->storageFolder.DIRECTORY_SEPARATOR.$md5,1);
+                // Create Mailpiece log file within storage folder
+                $this->createMailpieceLogFile($md5);
+                // COPY Mailpiece to Storage Container
+                if(copy($this->incomingFolder.DIRECTORY_SEPARATOR.$filename,$this->storageFolder.DIRECTORY_SEPARATOR.$md5.DIRECTORY_SEPARATOR.$filename)){
+                    // Mailpiece copied successfully
+                    $this->addLogEntry('Mailpiece "'.$filename.'" copied to storage container "'.$md5.'"',3);
+                    $this->addMailpiece2ProcessQueue($filename,$md5);
+                } else {
+                    // FAILED TO COPY Mailpiece
+                    $this->addLogEntry('FAILED to copy Mailpiece "'.$filename.'" to storage folder "'.$md5.'"',1);
+                    return false;
+                }
+
+            } else {
+                // FAILED to create directory
+                $this->addLogEntry('Failed to create Mailpiece storage folder: '.$this->storageFolder.DIRECTORY_SEPARATOR.$md5,1);
+                return false;
+            }
+        }
 
         return true;
     }
 
+    /**
+     * Add Stored Mailpiece to OCR Processing Queue
+     *
+     * @param $filename File name of Mailpiece to be processed (this hsould have PDF extension)
+     * @param $folder   Full Path to folder Mailpiece is permentaently stored in
+     *
+     * @todo Add error handling if writing to process queue file fails.
+     */
+    public function addMailpiece2ProcessQueue($filename,$folder) {
+        $resource = fopen($this->processQueueFile,'a+');
+        fwrite($resource,$this->storageFolder.DIRECTORY_SEPARATOR.$folder.",".$filename."\r\n");
+        fclose($resource);
+        $this->addLogEntry("Added Mailpiece \"".$filename."\" in folder \"".$folder."\" to process queue.",3);
+    }
+
+
+    /**
+     * Create log file within Mailpiece storage container
+     *
+     * @param $md5
+     *
+     * @return true becuase I <3 u! <3 <3 <3...    You're seriously weird.
+     */
+    private function createMailpieceLogFile($md5) {
+        $resource = fopen($this->storageFolder.DIRECTORY_SEPARATOR.$md5.DIRECTORY_SEPARATOR."Process.log","a+");
+        fwrite($resource,date('Ymd-His')." LOG FILE CREATED.\r\n");
+        fclose($resource);
+        $this->addLogEntry("Created Mailpiece Processlog Log File");
+        return true;
+    }
 }

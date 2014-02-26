@@ -34,6 +34,6 @@ require_once 'MailHandler.php';
 /**
  * Start the Party
  */
-$MailHandler = new MailHandler($config['incommingMailFolder'],$config['processedMailFolder']);
-
-$MailHandler->checkMail();
+$MailHandler = new MailHandler($config['incommingMailFolder'],$config['processedMailFolder'],$config['logFile']);
+$MailHandler->setLogLevel(3);
+$MailHandler->checkNewMail();
