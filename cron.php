@@ -37,3 +37,6 @@ require_once 'MailHandler.php';
 $MailHandler = new MailHandler($config['incommingMailFolder'],$config['processedMailFolder'],$config['logFile']);
 $MailHandler->setLogLevel(3);
 $MailHandler->checkNewMail();
+$MailHandler->processQueue();
+//$MailHandler->convertPdf2Image("processed/f7f799674c6b0d599ca0995026b807a3/");
+//$MailHandler->performOCR('processed/f7f799674c6b0d599ca0995026b807a3');

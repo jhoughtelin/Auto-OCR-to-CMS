@@ -24,11 +24,6 @@
  */
 
 /**
- * Standard Namespace
- */
-//namespace MailHandler;
-
-/**
  * MailHandler
  */
 class MailHandler
@@ -76,12 +71,10 @@ class MailHandler
     /**
      * Construct
      */
-    public function __construct($incomingFolder,$storageFolder,$logFile)
-    {
+    public function __construct($incomingFolder, $storageFolder, $logFile) {
         $this->setIncomingFolder($incomingFolder);
         $this->setStorageFolder($storageFolder);
         $this->setLogFile($logFile);
-
         $this->startLogger();
     }
 
@@ -92,8 +85,6 @@ class MailHandler
         $this->logfileResource = fopen($this->logFile,'a+');
     }
 
-
-
     ///////////////////////////////////
     //// DESTRUCTS
     ///////////////////////////////////
@@ -101,8 +92,7 @@ class MailHandler
     /**
      * Destruct
      */
-    public function __destruct()
-    {
+    public function __destruct() {
         $this->stopLogger();
     }
 
@@ -113,8 +103,6 @@ class MailHandler
         fclose($this->logfileResource);
     }
 
-
-
     ///////////////////////////////////
     //// GETTERS & SETTERS
     ///////////////////////////////////
@@ -124,8 +112,7 @@ class MailHandler
      *
      * @param  $incomingFolder
      */
-    public function setIncomingFolder($incomingFolder)
-    {
+    public function setIncomingFolder($incomingFolder) {
         $this->incomingFolder = $incomingFolder;
     }
 
@@ -140,16 +127,14 @@ class MailHandler
     /**
      * @param $storageFolder
      */
-    public function setStorageFolder($storageFolder)
-    {
+    public function setStorageFolder($storageFolder) {
         $this->storageFolder = $storageFolder;
     }
 
     /**
      * @return mixed
      */
-    public function getStorageFolder()
-    {
+    public function getStorageFolder() {
         return $this->storageFolder;
     }
 
@@ -174,8 +159,7 @@ class MailHandler
      *
      * @return true cuz I <3 u
      */
-    public function setLogLevel($logLevel)
-    {
+    public function setLogLevel($logLevel) {
         if(is_integer($logLevel) && ($logLevel >= 0) && ($logLevel <= 3)){
             $this->logLevel = $logLevel;
         } else {
@@ -185,8 +169,6 @@ class MailHandler
         }
 
     }
-
-
 
     ///////////////////////////////////
     //// THE REST OF THE MESS
@@ -279,10 +261,10 @@ class MailHandler
                 // Create Mailpiece log file within storage folder
                 $this->createMailpieceLogFile($md5);
                 // COPY Mailpiece to Storage Container
-                if(copy($this->incomingFolder.DIRECTORY_SEPARATOR.$filename,$this->storageFolder.DIRECTORY_SEPARATOR.$md5.DIRECTORY_SEPARATOR.$filename)){
+                if(copy($this->incomingFolder.DIRECTORY_SEPARATOR.$filename,$this->storageFolder.DIRECTORY_SEPARATOR.$md5.DIRECTORY_SEPARATOR."mail.pdf")){
                     // Mailpiece copied successfully
                     $this->addLogEntry('Mailpiece "'.$filename.'" copied to storage container "'.$md5.'"',3);
-                    $this->addMailpiece2ProcessQueue($filename,$md5);
+                    $this->addMailpiece2ProcessQueue($md5);
                 } else {
                     // FAILED TO COPY Mailpiece
                     $this->addLogEntry('FAILED to copy Mailpiece "'.$filename.'" to storage folder "'.$md5.'"',1);
@@ -302,18 +284,16 @@ class MailHandler
     /**
      * Add Stored Mailpiece to OCR Processing Queue
      *
-     * @param $filename File name of Mailpiece to be processed (this hsould have PDF extension)
      * @param $folder   Full Path to folder Mailpiece is permentaently stored in
      *
      * @todo Add error handling if writing to process queue file fails.
      */
-    public function addMailpiece2ProcessQueue($filename,$folder) {
+    public function addMailpiece2ProcessQueue($folder) {
         $resource = fopen($this->processQueueFile,'a+');
-        fwrite($resource,$this->storageFolder.DIRECTORY_SEPARATOR.$folder.",".$filename."\r\n");
+        fwrite($resource,$this->storageFolder.DIRECTORY_SEPARATOR.$folder."\r\n");
         fclose($resource);
-        $this->addLogEntry("Added Mailpiece \"".$filename."\" in folder \"".$folder."\" to process queue.",3);
+        $this->addLogEntry("Added Mailpiece folder \"".$folder."\" to process queue.",3);
     }
-
 
     /**
      * Create log file within Mailpiece storage container
@@ -328,5 +308,44 @@ class MailHandler
         fclose($resource);
         $this->addLogEntry("Created Mailpiece Processlog Log File");
         return true;
+    }
+
+    public function processQueue() {
+        $queuedMailpieces = file($this->processQueueFile);
+        if(count($queuedMailpieces)>0){
+            $processFolder = trim($queuedMailpieces[0]);
+            unset($queuedMailpieces[0]);
+            $resource = fopen($this->processQueueFile,"w+");
+            foreach($queuedMailpieces as $a_folder){
+                fwrite($a_folder."\r\n",$resource);
+            }
+            fclose($resource);
+
+            $this->convertPdf2Image($processFolder);
+            $this->performOCR($processFolder);
+        }else{
+            // Nothing in Queue
+            return false;
+        }
+    }
+
+    /**
+     * Convert PDF to Image
+     *
+     * @param $folder Folder within which the mailpiece to convert is stored
+     */
+    public function convertPdf2Image($folder) {
+        $result = shell_exec('cd '.$folder.'; convert -density 300 -depth 32 -quality 10 mail.pdf mail.jpg');
+        $this->addLogEntry('Converting "'.$folder.'". Artifacts:'.$result);
+    }
+
+
+    /**
+     * Perform OCR
+     *
+     * @param $folder   Folder within which the Mailpiece Images are stored
+     */
+    public function performOCR($folder) {
+        shell_exec('cd '.$folder.'; find . -name "*.jpg" -print0 | xargs -0 -I {} cuneiform -o {}.txt {}');
     }
 }
