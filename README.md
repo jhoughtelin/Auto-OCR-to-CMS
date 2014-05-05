@@ -1,3 +1,5 @@
+__ This is an incomplete app that never left the idea stage __
+
 # MailHandler
 This is the process & processor responsible for turning PDF scanned images of USPS incomming mail in to
 searchable resources attached to customer profiles within the CRM.  Amungst other things.
