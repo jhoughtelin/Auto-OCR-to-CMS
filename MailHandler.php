@@ -6,13 +6,10 @@
  *
  * PHP version 5.3.5
  *
- * @category  MailHandler
- * @package   IIMGroup_Platform
+ * @category  BGServices
+ * @package   MailHandler
  * @author    Josh Houghtelin <Josh@FindSomeHelp.com>
- * @copyright 2014 IMPACT INTERNATIONAL MARKETING Inc.
- * @license   (C)2014 IMPACT INTERNATIONAL MARKETING Inc.
  * @since     2014/02/26
- * @link      http://www.iimgroup.com
  */
 
 /**
